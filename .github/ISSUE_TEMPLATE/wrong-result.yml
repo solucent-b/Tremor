@@ -1,0 +1,41 @@
+name: Wrong result (false positive or missed break)
+description: Tremor reported a break that isn't real, or missed one that is.
+labels: [accuracy]
+body:
+  - type: input
+    id: upgrade
+    attributes:
+      label: Upgrade
+      description: Dependency and versions.
+      placeholder: com.google.guava:guava 20.0 -> 33.0.0-jre
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What went wrong?
+      options:
+        - Tremor reported a break that is not real (false positive)
+        - Tremor missed a break (it crashed or failed to compile, but Tremor said safe)
+        - The explanation or hint is wrong or confusing
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Smallest code that shows it
+      description: The few lines of your code that use the library. A fixture (see CONTRIBUTING.md) is perfect.
+      render: java
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Tremor output
+      description: Paste the relevant part of the report (`--format json` is ideal).
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Tremor version
+      placeholder: output of `tremor --version`

@@ -4,6 +4,7 @@ import dev.tremor.analysis.CheckResult;
 import dev.tremor.analysis.UpdateRow;
 import dev.tremor.report.HtmlReport;
 import dev.tremor.report.JsonReport;
+import dev.tremor.report.MarkdownReport;
 import dev.tremor.report.TextReport;
 import dev.tremor.report.UpdatesReport;
 import java.io.IOException;
@@ -62,6 +63,7 @@ final class ReportOutput {
             case TEXT -> report.text(rows, color, out);
             case JSON -> report.json(rows, out);
             case HTML -> report.html(rows, out);
+            case MARKDOWN -> new MarkdownReport().updates(rows, out);
         }
     }
 
@@ -70,6 +72,7 @@ final class ReportOutput {
             case TEXT -> new TextReport(color).write(result, out);
             case JSON -> new JsonReport().write(result, out);
             case HTML -> new HtmlReport().write(result, out);
+            case MARKDOWN -> new MarkdownReport().write(result, out);
         }
     }
 

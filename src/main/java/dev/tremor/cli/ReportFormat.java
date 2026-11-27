@@ -4,5 +4,6 @@ package dev.tremor.cli;
 public enum ReportFormat {
     TEXT,
     JSON,
-    HTML
+    HTML,
+    MARKDOWN
 }

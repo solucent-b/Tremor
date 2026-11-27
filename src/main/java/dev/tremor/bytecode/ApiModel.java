@@ -207,4 +207,29 @@ public final class ApiModel implements Serializable {
         }
         return out;
     }
+
+    /** Every API field visible on a class, declared or inherited, keyed by name. Nearest wins. */
+    public Map<String, ResolvedField> visibleApiFields(String internalName) {
+        Map<String, ResolvedField> out = new LinkedHashMap<>();
+        List<String> order = new java.util.ArrayList<>();
+        order.add(internalName);
+        order.addAll(supertypes(internalName));
+        for (String name : order) {
+            ClassInfo c = lookup(name);
+            if (c == null) {
+                continue;
+            }
+            for (FieldInfo f : c.fields().values()) {
+                if (f.isApi()) {
+                    out.putIfAbsent(f.name(), new ResolvedField(c, f));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** True if {@code internalName} is {@code ancestor} or a subtype of it. */
+    public boolean isSubtypeOf(String internalName, String ancestor) {
+        return internalName.equals(ancestor) || supertypes(internalName).contains(ancestor);
+    }
 }

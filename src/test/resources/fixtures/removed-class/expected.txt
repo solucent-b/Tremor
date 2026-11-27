@@ -1,0 +1,2 @@
+# lib.Util moved to lib.util.Util: Tremor should point at the new location.
+break REMOVED_CLASS project | Cleaner.java:5 calls Util.trim(String), which was removed

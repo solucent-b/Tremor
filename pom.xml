@@ -27,6 +27,8 @@
     <picocli.version>4.7.7</picocli.version>
     <junit.version>5.11.4</junit.version>
     <assertj.version>3.27.3</assertj.version>
+    <!-- Tests tagged "network" need Maven Central; run them with -Pnetwork. -->
+    <tremor.excludedGroups>network</tremor.excludedGroups>
   </properties>
 
   <dependencyManagement>
@@ -61,6 +63,15 @@
     </dependency>
   </dependencies>
 
+  <profiles>
+    <profile>
+      <id>network</id>
+      <properties>
+        <tremor.excludedGroups />
+      </properties>
+    </profile>
+  </profiles>
+
   <build>
     <resources>
       <resource>
@@ -83,6 +94,9 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.5.2</version>
+        <configuration>
+          <excludedGroups>${tremor.excludedGroups}</excludedGroups>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

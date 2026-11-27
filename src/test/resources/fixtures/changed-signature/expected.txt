@@ -1,0 +1,1 @@
+break PARAMETERS_CHANGED project | Settings.java:7 calls Store.put(String, String), which no longer exists with these parameters

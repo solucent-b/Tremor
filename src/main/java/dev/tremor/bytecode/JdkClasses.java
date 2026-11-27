@@ -27,7 +27,8 @@ final class JdkClasses {
     }
 
     private static Optional<ClassInfo> load(String internalName) {
-        try (InputStream in = ClassLoader.getSystemResourceAsStream(internalName + ".class")) {
+        // The platform loader sees only the JDK, never libraries on Tremor's own classpath.
+        try (InputStream in = ClassLoader.getPlatformClassLoader().getResourceAsStream(internalName + ".class")) {
             if (in == null) {
                 return Optional.empty();
             }

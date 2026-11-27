@@ -187,6 +187,33 @@ class ApiDifferTest {
     }
 
     @Test
+    void narrowerExceptionIsNotANewCheckedException() {
+        ApiDiff d = diff(
+                "package lib; public class A { public void m() throws java.io.IOException {} }",
+                "package lib; public class A { public void m() throws java.io.FileNotFoundException {} }");
+
+        assertThat(d.changes()).isEmpty();
+    }
+
+    @Test
+    void exceptionFromAnotherJarOnlyWarnsWhenNothingWasDeclaredBefore() {
+        Path ext = JavaCompilation.compile(temp.resolve("ext"), List.of(), Map.of(
+                "ext.ParseException", "package ext; public class ParseException extends java.io.IOException {}"));
+        Path old = JavaCompilation.compile(temp.resolve("v1"), List.of(ext), Map.of("lib.A",
+                "package lib; public class A { public void a() throws java.io.IOException {} public void b() {} }"));
+        Path neu = JavaCompilation.compile(temp.resolve("v2"), List.of(ext), Map.of("lib.A",
+                "package lib; public class A { public void a() throws ext.ParseException {}"
+                        + " public void b() throws ext.ParseException {} }"));
+
+        ApiDiff d = ApiDiffer.diff(ApiReader.read(old), ApiReader.read(neu));
+
+        assertThat(d.ownChanges()).singleElement().satisfies(c -> {
+            assertThat(c.kind()).isEqualTo(ChangeKind.NEW_CHECKED_EXCEPTION);
+            assertThat(c.memberName()).isEqualTo("b");
+        });
+    }
+
+    @Test
     void newlyDeprecated() {
         ApiDiff d = diff(
                 "package lib; public class A { public void m() {} }",

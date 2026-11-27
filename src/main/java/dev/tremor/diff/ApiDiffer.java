@@ -186,7 +186,7 @@ public final class ApiDiffer {
                     "Subclasses must implement " + om.name() + Names.parameters(om.descriptor()) + ".");
         }
         List<String> added = nm.exceptions().stream()
-                .filter(e -> !om.exceptions().contains(e) && isChecked(e)).toList();
+                .filter(e -> isNewCheckedException(e, om.exceptions())).toList();
         if (!added.isEmpty()) {
             member(ChangeKind.NEW_CHECKED_EXCEPTION, name, om, inherited, what, "now throws "
                     + String.join(", ", added.stream().map(Names::simple).toList()),
@@ -243,12 +243,28 @@ public final class ApiDiffer {
         }
     }
 
-    private boolean isChecked(String exception) {
-        if (newModel.isSubtypeOf(exception, "java/lang/RuntimeException")
-                || newModel.isSubtypeOf(exception, "java/lang/Error")) {
+    /**
+     * True if callers must now handle {@code exception}: it is checked, and it is not covered by
+     * (a subtype of) an exception the method already declared.
+     */
+    private boolean isNewCheckedException(String exception, List<String> before) {
+        if (before.contains(exception)) {
             return false;
         }
-        return true; // unknown hierarchies are treated as checked; this is only ever a warning
+        if (!newModel.hierarchyFullyKnown(exception)) {
+            // Declared in another jar: Tremor cannot tell if it narrows an old exception (e.g.
+            // JsonProcessingException extends IOException), so only warn if nothing was declared before.
+            return before.stream().noneMatch(this::isChecked);
+        }
+        if (!isChecked(exception)) {
+            return false;
+        }
+        return before.stream().noneMatch(old -> newModel.isSubtypeOf(exception, old));
+    }
+
+    private boolean isChecked(String exception) {
+        return !newModel.isSubtypeOf(exception, "java/lang/RuntimeException")
+                && !newModel.isSubtypeOf(exception, "java/lang/Error");
     }
 
     private String movedClassHint(String name) {

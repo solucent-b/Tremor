@@ -1,0 +1,3 @@
+# The app itself is fine, but library-y (built against v1) calls a method v2 removes.
+break REMOVED_METHOD library-y | Validator.java:5 calls Strings.isNullOrEmpty(String), which was removed
+version-change BREAKS library-y

@@ -56,17 +56,18 @@ class FixtureSuiteTest {
         fixture.library(new Gav("org.fixture", name, "2.0"), sources(dir.resolve("v2")));
 
         List<String> appDeps = new ArrayList<>(List.of(v1.groupId() + ":" + v1.artifactId() + ":1.0"));
+        List<Path> appClasspath = new ArrayList<>(List.of(v1Jar));
         Path dependents = dir.resolve("dependents");
         if (Files.isDirectory(dependents)) {
             try (Stream<Path> libs = Files.list(dependents)) {
                 for (Path lib : libs.sorted().toList()) {
                     Gav gav = new Gav("org.fixture", lib.getFileName().toString(), "1.0");
-                    fixture.library(gav, List.of(v1Jar), List.of(v1 + ""), sources(lib));
+                    appClasspath.add(fixture.library(gav, List.of(v1Jar), List.of(v1 + ""), sources(lib)));
                     appDeps.add(gav.toString());
                 }
             }
         }
-        Path project = fixture.project("app", appDeps, List.of(v1Jar), sources(dir.resolve("app")));
+        Path project = fixture.project("app", appDeps, appClasspath, sources(dir.resolve("app")));
 
         CheckResult result;
         try (MavenResolver resolver = new MavenResolver(

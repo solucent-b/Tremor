@@ -1,0 +1,2 @@
+# Writing breaks; reading the same field is fine.
+break FIELD_NOW_FINAL project | Boot.java:5 writes Config.region, which is now final

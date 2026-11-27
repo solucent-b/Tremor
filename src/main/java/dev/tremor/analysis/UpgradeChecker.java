@@ -1,7 +1,7 @@
 package dev.tremor.analysis;
 
 import dev.tremor.bytecode.ApiModel;
-import dev.tremor.bytecode.ApiReader;
+import dev.tremor.cache.AnalysisCache;
 import dev.tremor.diff.ApiDiff;
 import dev.tremor.diff.ApiDiffer;
 import dev.tremor.diff.Severity;
@@ -29,14 +29,16 @@ public final class UpgradeChecker {
             + " or behaviour changes inside methods. A clean result means no known break, not a guarantee.";
 
     private final MavenResolver resolver;
+    private final AnalysisCache cache;
     private final Function<Path, List<Path>> classesLocator;
 
     public UpgradeChecker(MavenResolver resolver) {
-        this(resolver, ProjectClasses::maven);
+        this(resolver, AnalysisCache.in(resolver.config().cacheDir()), ProjectClasses::maven);
     }
 
-    public UpgradeChecker(MavenResolver resolver, Function<Path, List<Path>> classesLocator) {
+    public UpgradeChecker(MavenResolver resolver, AnalysisCache cache, Function<Path, List<Path>> classesLocator) {
         this.resolver = resolver;
+        this.cache = cache;
         this.classesLocator = classesLocator;
     }
 
@@ -61,8 +63,8 @@ public final class UpgradeChecker {
         }
 
         JarPair jars = JarPair.fetch(resolver, groupId, artifactId, from.version(), toVersion);
-        ApiModel oldApi = ApiReader.read(jars.oldJar());
-        ApiModel newApi = ApiReader.read(jars.newJar());
+        ApiModel oldApi = cache.apiModel(jars.oldJar());
+        ApiModel newApi = cache.apiModel(jars.newJar());
         ApiDiff diff = ApiDiffer.diff(oldApi, newApi);
         UsageMatcher matcher = new UsageMatcher(oldApi, newApi, diff);
         UsageScanner scanner = new UsageScanner(oldApi::contains);
@@ -74,7 +76,7 @@ public final class UpgradeChecker {
         DependencyTree after = new DependencyTreeResolver(resolver)
                 .resolveUpgraded(project, groupId, artifactId, toVersion);
         List<Gav> scanned = new ArrayList<>();
-        findings.addAll(new LibraryChecker(resolver, from.version(), oldApi, newApi, diff, notes)
+        findings.addAll(new LibraryChecker(resolver, cache, jars, oldApi, newApi, diff, notes)
                 .check(after, groupId, artifactId, scanned));
         List<MediationIssue> mediation = MediationChecker.check(before, after, groupId, artifactId, findings);
 

@@ -37,11 +37,13 @@ import org.eclipse.aether.version.Version;
  */
 public final class MavenResolver implements AutoCloseable {
 
+    private final ResolverConfig config;
     private final RepositorySystem system;
     private final DefaultRepositorySystemSession session;
     private final List<RemoteRepository> repositories;
 
     public MavenResolver(ResolverConfig config) {
+        this.config = config;
         this.system = new RepositorySystemSupplier().get();
         this.session = MavenRepositorySystemUtils.newSession();
         session.setLocalRepositoryManager(
@@ -127,6 +129,10 @@ public final class MavenResolver implements AutoCloseable {
             throw new ResolutionException("Could not list versions of " + groupId + ":" + artifactId
                     + ": " + rootMessage(e), e);
         }
+    }
+
+    public ResolverConfig config() {
+        return config;
     }
 
     public DefaultRepositorySystemSession session() {

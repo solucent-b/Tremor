@@ -40,7 +40,8 @@ public final class GradleBuildReader {
             "\\b" + CONF + "\\s*\\(?\\s*(platform|enforcedPlatform)?\\s*\\(?\\s*[\"']([^\"'\\s]+)[\"']"
                     + "(?:\\s*\\+\\s*([A-Za-z_][A-Za-z0-9_.]*))?");
     private static final Pattern MAP_DEP = Pattern.compile("\\b" + CONF + "\\s*\\(?\\s*group\\s*[:=]\\s*[\"']([^\"']+)"
-            + "[\"']\\s*,\\s*name\\s*[:=]\\s*[\"']([^\"']+)[\"'](?:\\s*,\\s*version\\s*[:=]\\s*[\"']([^\"']+)[\"'])?");
+            + "[\"']\\s*,\\s*name\\s*[:=]\\s*[\"']([^\"']+)[\"']"
+            + "(?:\\s*,\\s*version\\s*[:=]\\s*(?:[\"']([^\"']+)[\"']|([A-Za-z_][A-Za-z0-9_.]*)))?");
     private static final Pattern CATALOG_DEP = Pattern.compile(
             "\\b" + CONF + "\\s*\\(?\\s*(platform|enforcedPlatform)?\\s*\\(?\\s*libs\\.([A-Za-z0-9_.]+)");
     private static final Pattern ASSIGNMENT = Pattern.compile(
@@ -75,7 +76,8 @@ public final class GradleBuildReader {
         }
         m = MAP_DEP.matcher(text);
         while (m.find()) {
-            String coords = m.group(2) + ":" + m.group(3) + (m.group(4) != null ? ":" + m.group(4) : "");
+            String version = m.group(4) != null ? m.group(4) : m.group(5) != null ? "${" + m.group(5) + "}" : null;
+            String coords = m.group(2) + ":" + m.group(3) + (version != null ? ":" + version : "");
             add(m.group(1), false, interpolate(coords, vars), deps, platforms, warnings);
         }
         m = CATALOG_DEP.matcher(text);

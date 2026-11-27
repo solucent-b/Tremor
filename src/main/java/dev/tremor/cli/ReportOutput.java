@@ -1,6 +1,7 @@
 package dev.tremor.cli;
 
 import dev.tremor.analysis.CheckResult;
+import dev.tremor.report.HtmlReport;
 import dev.tremor.report.JsonReport;
 import dev.tremor.report.TextReport;
 import java.io.IOException;
@@ -38,8 +39,7 @@ final class ReportOutput {
         switch (format) {
             case TEXT -> new TextReport(color).write(result, out);
             case JSON -> new JsonReport().write(result, out);
-            default -> throw new IllegalArgumentException("--format " + format.name().toLowerCase()
-                    + " is not supported yet; use text");
+            case HTML -> new HtmlReport().write(result, out);
         }
     }
 

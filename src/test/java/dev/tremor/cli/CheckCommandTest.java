@@ -92,6 +92,18 @@ class CheckCommandTest {
     }
 
     @Test
+    void jsonAndHtmlFormats() throws Exception {
+        CliRunner json = check("--dependency", "org.target:target", "--to", "2.0", "--format", "json");
+        assertThat(json.exitCode()).isEqualTo(ExitCodes.BREAKS_FOUND);
+        assertThat(new com.fasterxml.jackson.databind.ObjectMapper().readTree(json.out()).get("verdict").asText())
+                .isEqualTo("breaks");
+
+        Path html = temp.resolve("report.html");
+        check("--dependency", "org.target:target", "--to", "2.0", "--format", "html", "--output", html.toString());
+        assertThat(Files.readString(html)).contains("<!doctype html>").contains("calls Api.gone()");
+    }
+
+    @Test
     void dependencyNotInTreeIsToolError() {
         CliRunner result = check("--dependency", "org.example:nowhere", "--to", "1.0");
 

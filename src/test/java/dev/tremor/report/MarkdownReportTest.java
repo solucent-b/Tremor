@@ -22,7 +22,8 @@ class MarkdownReportTest {
         String md = render(dir, List.of());
 
         assertThat(md).startsWith(MarkdownReport.MARKER)
-                .contains("✅ **Tremor:** upgrading `guava` 20.0 → 33.0.0-jre is safe for this project.");
+                .contains("✅ **Tremor:** upgrading `guava` 20.0 → 33.0.0-jre is safe for this project.")
+                .contains("1 other library scanned");
     }
 
     @Test

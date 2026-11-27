@@ -45,8 +45,9 @@ public final class MarkdownReport {
             out.println("✅ **Tremor:** " + upgrade + " is safe for this project.");
         }
         out.println();
-        out.println("<sub>" + Summary.of(r).line() + " · " + Summary.plural(r.scannedLibraries().size(),
-                "other library") + " scanned · Tremor checks compiled bytecode; reflection and framework"
+        int libs = r.scannedLibraries().size();
+        out.println("<sub>" + Summary.of(r).line() + " · " + libs + (libs == 1 ? " other library" : " other libraries")
+                + " scanned · Tremor checks compiled bytecode; reflection and framework"
                 + " wiring are not covered.</sub>");
         out.flush();
     }

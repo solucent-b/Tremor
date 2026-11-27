@@ -104,6 +104,38 @@ class CheckCommandTest {
     }
 
     @Test
+    void allUpdatesShowsATable() throws Exception {
+        fixture.library(new Gav("org.other", "fine", "1.0"), Map.of("o.Fine", "package o; public class Fine {}"));
+        fixture.library(new Gav("org.other", "fine", "1.2"), Map.of("o.Fine", "package o; public class Fine {}"));
+        fixture.library(new Gav("org.other", "fine", "2.0-beta1"), Map.of("o.Fine", "package o; class Fine {}"));
+        Files.writeString(project.resolve("pom.xml"), Files.readString(project.resolve("pom.xml")).replace(
+                "</dependencies>", "<dependency><groupId>org.other</groupId><artifactId>fine</artifactId>"
+                        + "<version>1.0</version></dependency></dependencies>"));
+
+        CliRunner result = check("--all-updates");
+
+        assertThat(result.exitCode()).isEqualTo(ExitCodes.BREAKS_FOUND);
+        assertThat(result.out())
+                .containsPattern("org.target:target\\s+1.0\\s+2.0\\s+❌ breaks \\(1 break\\)")
+                .containsPattern("org.other:fine\\s+1.0\\s+1.2\\s+✅ safe")
+                .contains("1 safe, 0 risky, 1 with breaks");
+
+        CliRunner json = check("--all-updates", "--format", "json");
+        var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json.out());
+        assertThat(tree.get("mode").asText()).isEqualTo("all-updates");
+        assertThat(tree.get("updates").get(0).get("verdict").asText()).isEqualTo("breaks");
+        assertThat(tree.get("updates").get(0).get("report").get("breaks")).hasSize(1);
+    }
+
+    @Test
+    void allUpdatesCannotBeCombinedWithDependency() {
+        CliRunner result = check("--all-updates", "--dependency", "a:b");
+
+        assertThat(result.exitCode()).isEqualTo(ExitCodes.TOOL_ERROR);
+        assertThat(result.err()).contains("not both");
+    }
+
+    @Test
     void dependencyNotInTreeIsToolError() {
         CliRunner result = check("--dependency", "org.example:nowhere", "--to", "1.0");
 

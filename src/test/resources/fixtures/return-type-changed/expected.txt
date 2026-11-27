@@ -1,0 +1,1 @@
+break RETURN_TYPE_CHANGED project | Stats.java:5 calls Counter.count(), which now returns long instead of int

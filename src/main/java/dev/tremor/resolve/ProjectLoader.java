@@ -22,7 +22,11 @@ public final class ProjectLoader {
     }
 
     public ProjectModel load(Path projectDir) {
-        ProjectModel raw = new PomReader(resolver::resolvePom).read(projectDir);
+        return expandBoms(new PomReader(resolver::resolvePom).read(projectDir));
+    }
+
+    /** Fills in versions that come from imported BOMs (Maven) or platforms (Gradle). */
+    public ProjectModel expandBoms(ProjectModel raw) {
         if (raw.importedBoms().isEmpty()) {
             return raw;
         }
@@ -58,7 +62,7 @@ public final class ProjectLoader {
         // Drop warnings about versions that the BOMs have now supplied.
         warnings.removeIf(w -> w.startsWith("Could not work out the version of ") && direct.stream()
                 .anyMatch(d -> d.version() != null && w.contains(" " + d.key() + " ")));
-        return new ProjectModel(raw.pomFile(), raw.gav(), raw.parent(), List.copyOf(direct),
+        return new ProjectModel(raw.buildFile(), raw.gav(), raw.parent(), List.copyOf(direct),
                 List.copyOf(managed), List.copyOf(warnings));
     }
 

@@ -11,7 +11,7 @@ import java.util.Optional;
  * @param warnings things Tremor could not fully work out (e.g. a parent POM it could not find)
  */
 public record ProjectModel(
-        Path pomFile,
+        Path buildFile,
         Gav gav,
         Gav parent,
         List<DeclaredDependency> dependencies,

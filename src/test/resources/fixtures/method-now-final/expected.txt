@@ -1,0 +1,1 @@
+break METHOD_NOW_FINAL project | EmailTask.java:6 overrides Task.name(), which is now final

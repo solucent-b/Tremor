@@ -48,29 +48,29 @@ public final class ApiDiffer {
         ClassInfo n = newModel.get(name);
         String display = Names.simple(name);
         if (n == null) {
-            classChange(ChangeKind.REMOVED_CLASS, name, display + " was removed", movedClassHint(name));
+            classChange(ChangeKind.REMOVED_CLASS, name, display, "was removed", movedClassHint(name));
             return;
         }
         if (!newModel.isApiClass(name)) {
             classChange(ChangeKind.CLASS_LESS_VISIBLE, name,
-                    display + " is no longer public (now " + Access.visibilityName(n.access()) + ")", null);
+                    display, "is no longer public (now " + Access.visibilityName(n.access()) + ")", null);
             return;
         }
         if (o.isInterface() != n.isInterface()) {
-            classChange(ChangeKind.CLASS_KIND_CHANGED, name, display + " changed from "
+            classChange(ChangeKind.CLASS_KIND_CHANGED, name, display, "changed from "
                     + kind(o) + " to " + kind(n), "Recompile against the new version and adjust the code.");
             return;
         }
         if (!o.isFinal() && n.isFinal() && !o.isInterface()) {
-            classChange(ChangeKind.CLASS_NOW_FINAL, name, display + " is now final and cannot be extended",
+            classChange(ChangeKind.CLASS_NOW_FINAL, name, display, "is now final and cannot be extended",
                     "Use composition (wrap an instance) instead of extending it.");
         }
         if (!o.isAbstract() && n.isAbstract() && !n.isInterface()) {
-            classChange(ChangeKind.CLASS_NOW_ABSTRACT, name, display + " is now abstract and cannot be created with new",
+            classChange(ChangeKind.CLASS_NOW_ABSTRACT, name, display, "is now abstract and cannot be created with new",
                     "Look for a factory method or a concrete subclass.");
         }
         if (!o.deprecated() && n.deprecated()) {
-            classChange(ChangeKind.DEPRECATED, name, display + " is now deprecated", null);
+            classChange(ChangeKind.DEPRECATED, name, display, "is now deprecated", null);
         }
         diffSupertypes(name);
         diffMethods(name, o, n);
@@ -89,7 +89,7 @@ public final class ApiDiffer {
             boolean implied = removed.stream().anyMatch(r -> !r.equals(s) && oldModel.supertypes(r).contains(s));
             if (!implied) {
                 classChange(ChangeKind.REMOVED_SUPERTYPE, name,
-                        Names.simple(name) + " no longer extends or implements " + Names.simple(s), null);
+                        Names.simple(name), "no longer extends or implements " + Names.simple(s), null);
             }
         }
     }
@@ -118,8 +118,8 @@ public final class ApiDiffer {
                         && newModel.contains(entry.getValue().declaringClass().name())) {
                     changes.add(new ApiChange(ChangeKind.ABSTRACT_METHOD_ADDED, name, nm.name(), nm.descriptor(),
                             !entry.getValue().declaringClass().name().equals(name),
-                            "New abstract method " + Names.method(name, nm.name(), nm.descriptor())
-                                    + " must be implemented by every subclass or implementation",
+                            Names.method(name, nm.name(), nm.descriptor()),
+                            "is a new abstract method that every subclass or implementation must implement",
                             "Implement " + nm.name() + Names.parameters(nm.descriptor()) + " in your class."));
                 }
             }
@@ -130,7 +130,7 @@ public final class ApiDiffer {
         String what = Names.method(name, om.name(), om.descriptor());
         Lookup<ResolvedMethod> hidden = newModel.resolveMethod(name, om.name(), om.descriptor());
         if (hidden.isFound()) {
-            member(ChangeKind.METHOD_LESS_VISIBLE, name, om, inherited, what + " is no longer accessible (now "
+            member(ChangeKind.METHOD_LESS_VISIBLE, name, om, inherited, what, "is no longer accessible (now "
                     + Access.visibilityName(hidden.value().method().access()) + ")", null);
             return;
         }
@@ -143,11 +143,11 @@ public final class ApiDiffer {
         String params = om.descriptor().substring(0, om.descriptor().indexOf(')') + 1);
         MethodInfo sameParams = sameName.stream().filter(m -> m.descriptor().startsWith(params)).findFirst().orElse(null);
         if (sameParams != null) {
-            member(ChangeKind.RETURN_TYPE_CHANGED, name, om, inherited, what + " now returns "
+            member(ChangeKind.RETURN_TYPE_CHANGED, name, om, inherited, what, "now returns "
                     + Names.returnType(sameParams.descriptor()) + " instead of " + Names.returnType(om.descriptor()),
                     "Recompile against the new version; code that uses the result may need changes.");
         } else if (!sameName.isEmpty()) {
-            member(ChangeKind.PARAMETERS_CHANGED, name, om, inherited, what + " no longer exists with these parameters",
+            member(ChangeKind.PARAMETERS_CHANGED, name, om, inherited, what, "no longer exists with these parameters",
                     "Use " + describeAll(name, sameName) + " instead.");
         } else {
             ChangeKind kind = om.isConstructor() ? ChangeKind.REMOVED_CONSTRUCTOR : ChangeKind.REMOVED_METHOD;
@@ -155,40 +155,40 @@ public final class ApiDiffer {
                     .filter(m -> !m.isConstructor() && similarName(m.name(), om.name()))
                     .toList();
             String hint = similar.isEmpty() ? null : "Maybe use " + describeAll(name, similar) + " instead.";
-            member(kind, name, om, inherited, what + " was removed", hint);
+            member(kind, name, om, inherited, what, "was removed", hint);
         }
     }
 
     private void methodChanged(String name, ClassInfo o, ClassInfo n, MethodInfo om, MethodInfo nm, boolean inherited) {
         String what = Names.method(name, om.name(), om.descriptor());
         if (Access.visibilityRank(nm.access()) < Access.visibilityRank(om.access())) {
-            member(ChangeKind.METHOD_LESS_VISIBLE, name, om, inherited, what + " is now "
+            member(ChangeKind.METHOD_LESS_VISIBLE, name, om, inherited, what, "is now "
                     + Access.visibilityName(nm.access()) + " (was " + Access.visibilityName(om.access()) + ")", null);
         }
         if (om.isStatic() != nm.isStatic()) {
-            member(ChangeKind.METHOD_STATIC_CHANGED, name, om, inherited, what + " is now "
+            member(ChangeKind.METHOD_STATIC_CHANGED, name, om, inherited, what, "is now "
                     + (nm.isStatic() ? "static" : "an instance method") + " (was "
                     + (om.isStatic() ? "static" : "an instance method") + ")",
                     nm.isStatic() ? "Call it as " + Names.simple(name) + "." + om.name() + "(...)."
                             : "Call it on an instance instead of the class.");
         }
         if (!om.isFinal() && nm.isFinal() && !o.isFinal() && !n.isFinal() && !om.isStatic()) {
-            member(ChangeKind.METHOD_NOW_FINAL, name, om, inherited, what + " is now final and cannot be overridden",
+            member(ChangeKind.METHOD_NOW_FINAL, name, om, inherited, what, "is now final and cannot be overridden",
                     null);
         }
         if (!om.isAbstract() && nm.isAbstract()) {
-            member(ChangeKind.METHOD_NOW_ABSTRACT, name, om, inherited, what + " is now abstract",
+            member(ChangeKind.METHOD_NOW_ABSTRACT, name, om, inherited, what, "is now abstract",
                     "Subclasses must implement " + om.name() + Names.parameters(om.descriptor()) + ".");
         }
         List<String> added = nm.exceptions().stream()
                 .filter(e -> !om.exceptions().contains(e) && isChecked(e)).toList();
         if (!added.isEmpty()) {
-            member(ChangeKind.NEW_CHECKED_EXCEPTION, name, om, inherited, what + " now throws "
+            member(ChangeKind.NEW_CHECKED_EXCEPTION, name, om, inherited, what, "now throws "
                     + String.join(", ", added.stream().map(Names::simple).toList()),
                     "Callers must catch or declare it when recompiling.");
         }
         if (!om.deprecated() && nm.deprecated()) {
-            member(ChangeKind.DEPRECATED, name, om, inherited, what + " is now deprecated", null);
+            member(ChangeKind.DEPRECATED, name, om, inherited, what, "is now deprecated", null);
         }
     }
 
@@ -206,10 +206,10 @@ public final class ApiDiffer {
             if (nf == null) {
                 Lookup<ResolvedField> hidden = newModel.resolveField(name, of.name());
                 if (hidden.isFound()) {
-                    field(ChangeKind.FIELD_LESS_VISIBLE, name, of, inherited, what + " is no longer accessible", null);
+                    field(ChangeKind.FIELD_LESS_VISIBLE, name, of, inherited, what, "is no longer accessible", null);
                 } else if (!hidden.unknown()) {
                     List<String> similar = after.keySet().stream().filter(f -> similarName(f, of.name())).toList();
-                    field(ChangeKind.REMOVED_FIELD, name, of, inherited, what + " was removed",
+                    field(ChangeKind.REMOVED_FIELD, name, of, inherited, what, "was removed",
                             similar.isEmpty() ? null : "Maybe use " + String.join(" or ",
                                     similar.stream().map(f -> Names.field(name, f)).toList()) + " instead.");
                 }
@@ -217,23 +217,23 @@ public final class ApiDiffer {
             }
             var nfi = nf.field();
             if (!nfi.descriptor().equals(of.descriptor())) {
-                field(ChangeKind.FIELD_TYPE_CHANGED, name, of, inherited, what + " changed type from "
+                field(ChangeKind.FIELD_TYPE_CHANGED, name, of, inherited, what, "changed type from "
                         + Names.fieldType(of.descriptor()) + " to " + Names.fieldType(nfi.descriptor()), null);
             }
             if (of.isStatic() != nfi.isStatic()) {
-                field(ChangeKind.FIELD_STATIC_CHANGED, name, of, inherited, what + " is now "
+                field(ChangeKind.FIELD_STATIC_CHANGED, name, of, inherited, what, "is now "
                         + (nfi.isStatic() ? "static" : "an instance field"), null);
             }
             if (!of.isFinal() && nfi.isFinal()) {
-                field(ChangeKind.FIELD_NOW_FINAL, name, of, inherited, what + " is now final and cannot be assigned",
+                field(ChangeKind.FIELD_NOW_FINAL, name, of, inherited, what, "is now final and cannot be assigned",
                         null);
             }
             if (Access.visibilityRank(nfi.access()) < Access.visibilityRank(of.access())) {
-                field(ChangeKind.FIELD_LESS_VISIBLE, name, of, inherited, what + " is now "
+                field(ChangeKind.FIELD_LESS_VISIBLE, name, of, inherited, what, "is now "
                         + Access.visibilityName(nfi.access()), null);
             }
             if (!of.deprecated() && nfi.deprecated()) {
-                field(ChangeKind.DEPRECATED, name, of, inherited, what + " is now deprecated", null);
+                field(ChangeKind.DEPRECATED, name, of, inherited, what, "is now deprecated", null);
             }
         }
     }
@@ -294,16 +294,17 @@ public final class ApiDiffer {
         return c.isInterface() ? "an interface" : "a class";
     }
 
-    private void classChange(ChangeKind kind, String name, String description, String hint) {
-        changes.add(new ApiChange(kind, name, null, null, false, description, hint));
+    private void classChange(ChangeKind kind, String name, String subject, String reason, String hint) {
+        changes.add(new ApiChange(kind, name, null, null, false, subject, reason, hint));
     }
 
-    private void member(ChangeKind kind, String name, MethodInfo m, boolean inherited, String description, String hint) {
-        changes.add(new ApiChange(kind, name, m.name(), m.descriptor(), inherited, description, hint));
+    private void member(ChangeKind kind, String name, MethodInfo m, boolean inherited, String subject, String reason,
+            String hint) {
+        changes.add(new ApiChange(kind, name, m.name(), m.descriptor(), inherited, subject, reason, hint));
     }
 
     private void field(ChangeKind kind, String name, dev.tremor.bytecode.FieldInfo f, boolean inherited,
-            String description, String hint) {
-        changes.add(new ApiChange(kind, name, f.name(), f.descriptor(), inherited, description, hint));
+            String subject, String reason, String hint) {
+        changes.add(new ApiChange(kind, name, f.name(), f.descriptor(), inherited, subject, reason, hint));
     }
 }

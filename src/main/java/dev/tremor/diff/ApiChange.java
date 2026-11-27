@@ -7,7 +7,8 @@ package dev.tremor.diff;
  * @param memberName method, constructor ({@code <init>}) or field name; null for class-level changes
  * @param memberDescriptor JVM descriptor of the member in the OLD version; null for class-level changes
  * @param inherited true when the member is declared in a superclass of {@code className}
- * @param description what changed, in plain words
+ * @param subject the class or member that changed, e.g. {@code Cache.getIfPresent(Object)}
+ * @param reason what happened to it, e.g. {@code was removed}
  * @param hint what to do instead, or null when Tremor has no suggestion
  */
 public record ApiChange(
@@ -16,8 +17,14 @@ public record ApiChange(
         String memberName,
         String memberDescriptor,
         boolean inherited,
-        String description,
+        String subject,
+        String reason,
         String hint) {
+
+    /** Subject and reason as one sentence, e.g. {@code Cache.getIfPresent(Object) was removed}. */
+    public String description() {
+        return subject + " " + reason;
+    }
 
     public Severity severity() {
         return kind.severity();

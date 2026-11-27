@@ -1,0 +1,1 @@
+break CLASS_NOW_FINAL project | AuditHandler.java:3 extends Handler, which is now final

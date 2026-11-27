@@ -25,6 +25,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <picocli.version>4.7.7</picocli.version>
+    <maven.version>3.9.16</maven.version>
     <junit.version>5.11.4</junit.version>
     <assertj.version>3.27.3</assertj.version>
     <!-- Tests tagged "network" need Maven Central; run them with -Pnetwork. -->
@@ -48,6 +49,11 @@
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>
       <version>${picocli.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-model</artifactId>
+      <version>${maven.version}</version>
     </dependency>
 
     <dependency>

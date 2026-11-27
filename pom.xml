@@ -28,6 +28,7 @@
     <maven.version>3.9.16</maven.version>
     <resolver.version>1.9.27</resolver.version>
     <asm.version>9.9.1</asm.version>
+    <jackson.version>2.22.4</jackson.version>
     <junit.version>5.11.4</junit.version>
     <assertj.version>3.27.3</assertj.version>
     <!-- Tests tagged "network" need Maven Central; run them with -Pnetwork. -->
@@ -82,6 +83,11 @@
     <dependency>
       <groupId>org.ow2.asm</groupId>
       <artifactId>asm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.resolver</groupId>

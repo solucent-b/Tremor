@@ -70,12 +70,18 @@ public final class UpgradeChecker {
         ScanResult projectScan = scanner.scan(classes);
         List<Finding> findings = new ArrayList<>(matcher.match(projectScan, Origin.PROJECT));
         projectScan.problems().forEach(p -> notes.add("Skipped an unreadable class: " + p));
+
+        DependencyTree after = new DependencyTreeResolver(resolver)
+                .resolveUpgraded(project, groupId, artifactId, toVersion);
+        List<Gav> scanned = new ArrayList<>();
+        findings.addAll(new LibraryChecker(resolver, from.version(), oldApi, newApi, diff, notes)
+                .check(after, groupId, artifactId, scanned));
+
         skippedNote(oldApi, newApi, notes);
         notes.add(REFLECTION_NOTE);
-
         return new CheckResult(projectDir, project.gav(), from, to, findings, List.of(),
                 new CheckResult.ApiChangeCounts(diff.count(Severity.BREAKING), diff.count(Severity.WARNING)),
-                List.of(), notes);
+                scanned, notes);
     }
 
     private static void skippedNote(ApiModel oldApi, ApiModel newApi, List<String> notes) {

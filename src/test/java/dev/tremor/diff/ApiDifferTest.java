@@ -228,6 +228,38 @@ class ApiDifferTest {
     }
 
     @Test
+    void removedStaticMethodThatMovedToAnotherClass() {
+        ApiDiff d = diff(
+                Map.of("lib.Objects", "package lib; public class Objects {"
+                        + " public static String toStringHelper(Object o) { return \"\"; } }"),
+                Map.of("lib.Objects", "package lib; public class Objects { }",
+                        "lib.MoreObjects", "package lib; public class MoreObjects {"
+                                + " public static StringBuilder toStringHelper(Object o) { return null; } }"));
+
+        ApiChange c = d.forMethod("lib/Objects", "toStringHelper", "(Ljava/lang/Object;)Ljava/lang/String;").get(0);
+        assertThat(c.hint()).isEqualTo("It may have moved: use MoreObjects.toStringHelper(Object) instead.");
+    }
+
+    @Test
+    void movedNestedClassIsSuggested() {
+        ApiDiff d = diff(
+                Map.of("lib.Objects", "package lib; public class Objects { public static class Helper {} }"),
+                Map.of("lib.Objects", "package lib; public class Objects { }",
+                        "lib.MoreObjects", "package lib; public class MoreObjects { public static class Helper {} }"));
+
+        assertThat(d.forClass("lib/Objects$Helper").get(0).hint()).isEqualTo("It may have moved: try lib.MoreObjects.Helper.");
+    }
+
+    @Test
+    void jdkMethodsAreNeverSuggested() {
+        ApiDiff d = diff(
+                "package lib; public class A { public String toStringHelper() { return null; } }",
+                "package lib; public class A { }");
+
+        assertThat(d.forMethod("lib/A", "toStringHelper", "()Ljava/lang/String;").get(0).hint()).isNull();
+    }
+
+    @Test
     void similarNames() {
         assertThat(ApiDiffer.similarName("isEmpty", "isEmptyString")).isTrue();
         assertThat(ApiDiffer.similarName("getValue", "getValues")).isTrue();

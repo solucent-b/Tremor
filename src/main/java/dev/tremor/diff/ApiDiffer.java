@@ -151,10 +151,15 @@ public final class ApiDiffer {
                     "Use " + describeAll(name, sameName) + " instead.");
         } else {
             ChangeKind kind = om.isConstructor() ? ChangeKind.REMOVED_CONSTRUCTOR : ChangeKind.REMOVED_METHOD;
-            List<MethodInfo> similar = after.stream().map(ResolvedMethod::method)
-                    .filter(m -> !m.isConstructor() && similarName(m.name(), om.name()))
-                    .toList();
-            String hint = similar.isEmpty() ? null : "Maybe use " + describeAll(name, similar) + " instead.";
+            String hint = om.isConstructor() ? null : movedMethodHint(name, om);
+            if (hint == null) {
+                List<ResolvedMethod> similar = after.stream()
+                        .filter(m -> !m.method().isConstructor() && similarName(m.method().name(), om.name())
+                                && newModel.contains(m.declaringClass().name()))
+                        .toList();
+                hint = similar.isEmpty() ? null : "Maybe use " + describeAll(name,
+                        similar.stream().map(ResolvedMethod::method).toList()) + " instead.";
+            }
             member(kind, name, om, inherited, what, "was removed", hint);
         }
     }
@@ -247,11 +252,47 @@ public final class ApiDiffer {
     }
 
     private String movedClassHint(String name) {
-        String simple = name.substring(name.lastIndexOf('/') + 1);
+        String simple = innermostName(name);
         List<String> candidates = newModel.classes().keySet().stream()
-                .filter(c -> c.endsWith("/" + simple) && newModel.isApiClass(c))
-                .sorted().limit(3).map(Names::display).toList();
+                .filter(c -> innermostName(c).equals(simple) && newModel.isApiClass(c))
+                .sorted(java.util.Comparator.comparingInt((String c) -> samePackage(c, name) ? 0 : 1)
+                        .thenComparing(c -> c))
+                .limit(3).map(Names::display).toList();
         return candidates.isEmpty() ? null : "It may have moved: try " + String.join(" or ", candidates) + ".";
+    }
+
+    /**
+     * A static method that disappeared may now live in another class with the same name and
+     * parameters (e.g. Guava's {@code Objects.toStringHelper} moved to {@code MoreObjects}).
+     */
+    private String movedMethodHint(String owner, MethodInfo om) {
+        if (!om.isStatic()) {
+            return null;
+        }
+        String params = om.descriptor().substring(0, om.descriptor().indexOf(')') + 1);
+        List<String> candidates = new ArrayList<>();
+        for (ClassInfo c : newModel.classes().values()) {
+            if (c.name().equals(owner) || !newModel.isApiClass(c.name())) {
+                continue;
+            }
+            for (MethodInfo m : c.methods().values()) {
+                if (m.isStatic() && m.isApi() && m.name().equals(om.name()) && m.descriptor().startsWith(params)) {
+                    candidates.add((samePackage(c.name(), owner) ? "0" : "1")
+                            + Names.method(c.name(), m.name(), m.descriptor()));
+                }
+            }
+        }
+        List<String> best = candidates.stream().sorted().limit(2).map(s -> s.substring(1)).toList();
+        return best.isEmpty() ? null : "It may have moved: use " + String.join(" or ", best) + " instead.";
+    }
+
+    private static String innermostName(String internalName) {
+        String s = internalName.substring(internalName.lastIndexOf('/') + 1);
+        return s.substring(s.lastIndexOf('$') + 1);
+    }
+
+    private static boolean samePackage(String a, String b) {
+        return a.substring(0, Math.max(0, a.lastIndexOf('/'))).equals(b.substring(0, Math.max(0, b.lastIndexOf('/'))));
     }
 
     private static String describeAll(String owner, List<MethodInfo> methods) {

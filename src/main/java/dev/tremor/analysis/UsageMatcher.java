@@ -56,9 +56,20 @@ public final class UsageMatcher {
         return new ArrayList<>(out.values());
     }
 
-    private record Context(ScanResult scan, Origin origin, Map<String, Finding> out) {
+    private record Context(ScanResult scan, Origin origin, Map<String, Finding> out, Set<String> once) {
+        Context(ScanResult scan, Origin origin, Map<String, Finding> out) {
+            this(scan, origin, out, new java.util.HashSet<>());
+        }
+
         boolean bundles(String className) {
             return scan.classes().containsKey(className);
+        }
+
+        /** Adds a finding only the first time {@code key} is seen (e.g. once per file). */
+        void addOnce(String key, Finding f) {
+            if (once.add(key)) {
+                add(f);
+            }
         }
 
         void add(Finding f) {
@@ -82,6 +93,7 @@ public final class UsageMatcher {
         if (!oldModel.contains(u.owner())) {
             return;
         }
+        lostSupertypes(ctx, u);
         if (!u.kind().isMemberUsage()) {
             matchClassUsage(ctx, u);
         } else {
@@ -234,6 +246,21 @@ public final class UsageMatcher {
         } else {
             warnings(ctx, u, action, changes);
             warnings(ctx, u, action, deprecationsOf(owner));
+        }
+    }
+
+    /**
+     * A class that no longer implements an interface (or extends a class) breaks code that uses it
+     * as that type. Tremor cannot follow types through variables, so this is a warning, once per file.
+     */
+    private void lostSupertypes(Context ctx, Usage u) {
+        for (ApiChange c : diff.forClass(u.owner())) {
+            if (c.kind() == ChangeKind.REMOVED_SUPERTYPE) {
+                ctx.addOnce(u.location().sourcePath() + "|" + c.reason(), new Finding(Severity.WARNING,
+                        ChangeKind.REMOVED_SUPERTYPE, ctx.origin(), u.location(), "uses " + Names.simple(u.owner()),
+                        c.reason(), null,
+                        "If your code treats it as that type (assigns, passes or casts it), it will fail at runtime."));
+            }
         }
     }
 

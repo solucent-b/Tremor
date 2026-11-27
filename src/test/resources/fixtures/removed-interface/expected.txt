@@ -1,0 +1,1 @@
+warning REMOVED_SUPERTYPE project | Repository.java:8 uses Connection, which no longer extends or implements Closeable

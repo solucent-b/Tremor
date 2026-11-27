@@ -27,6 +27,7 @@
     <picocli.version>4.7.7</picocli.version>
     <maven.version>3.9.16</maven.version>
     <resolver.version>1.9.27</resolver.version>
+    <asm.version>9.9.1</asm.version>
     <junit.version>5.11.4</junit.version>
     <assertj.version>3.27.3</assertj.version>
     <!-- Tests tagged "network" need Maven Central; run them with -Pnetwork. -->
@@ -41,6 +42,11 @@
         <version>${junit.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm</artifactId>
+        <version>${asm.version}</version>
       </dependency>
       <!-- Keep every Maven library on the same release line. -->
       <dependency>
@@ -73,6 +79,10 @@
       <version>${maven.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.apache.maven.resolver</groupId>
       <artifactId>maven-resolver-supplier</artifactId>

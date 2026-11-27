@@ -88,6 +88,37 @@ class UpgradeCheckerTest {
     }
 
     @Test
+    void flagsLibrariesThatGetAVersionTheyDidNotAskFor() {
+        CheckResult result = check("2.0");
+
+        assertThat(result.mediation()).extracting(m -> m.library().artifactId() + ":" + m.risk())
+                .containsExactlyInAnyOrder("library-y:BREAKS", "library-z:LOW");
+        MediationIssue y = result.mediation().stream()
+                .filter(m -> m.library().artifactId().equals("library-y")).findFirst().orElseThrow();
+        assertThat(y.requested()).isEqualTo("1.0");
+        assertThat(y.resolved()).isEqualTo("2.0");
+        assertThat(y.explanation()).startsWith("library-y 1.4.2 asks for strings 1.0 but will get 2.0");
+    }
+
+    @Test
+    void downgradeIsRisky() {
+        fixture.library(new Gav("org.text", "strings", "0.9"), Map.of("text.Strings", """
+                package text;
+                public class Strings {
+                    public static boolean isNullOrEmpty(String s) { return s == null; }
+                    public static String pad(String s) { return s; }
+                }
+                """));
+
+        CheckResult result = check("0.9");
+
+        assertThat(result.mediation()).isNotEmpty().allSatisfy(m -> {
+            assertThat(m.risk()).isEqualTo(MediationIssue.Risk.RISKY);
+            assertThat(m.explanation()).contains("OLDER");
+        });
+    }
+
+    @Test
     void sameVersionIsANoOp() {
         CheckResult result = check("1.0");
 

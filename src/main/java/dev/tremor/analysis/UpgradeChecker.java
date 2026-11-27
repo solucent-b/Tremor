@@ -76,10 +76,11 @@ public final class UpgradeChecker {
         List<Gav> scanned = new ArrayList<>();
         findings.addAll(new LibraryChecker(resolver, from.version(), oldApi, newApi, diff, notes)
                 .check(after, groupId, artifactId, scanned));
+        List<MediationIssue> mediation = MediationChecker.check(before, after, groupId, artifactId, findings);
 
         skippedNote(oldApi, newApi, notes);
         notes.add(REFLECTION_NOTE);
-        return new CheckResult(projectDir, project.gav(), from, to, findings, List.of(),
+        return new CheckResult(projectDir, project.gav(), from, to, findings, mediation,
                 new CheckResult.ApiChangeCounts(diff.count(Severity.BREAKING), diff.count(Severity.WARNING)),
                 scanned, notes);
     }

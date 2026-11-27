@@ -1,11 +1,10 @@
 package dev.tremor.cli;
 
 import dev.tremor.analysis.CheckResult;
-import dev.tremor.analysis.Finding;
 import dev.tremor.analysis.UpgradeChecker;
 import dev.tremor.resolve.MavenResolver;
 import dev.tremor.resolve.ResolverConfig;
-import java.io.PrintWriter;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +58,9 @@ public final class CheckCommand implements Callable<Integer> {
             description = "Do not use Maven Central; only the --repository URLs (e.g. a company mirror).")
     boolean noCentral;
 
+    @Option(names = "--no-color", description = "Do not use colors in the terminal report.")
+    boolean noColor;
+
     ResolverConfig resolverConfig() {
         Path cache = cacheDir != null ? cacheDir : ResolverConfig.defaultCacheDir();
         List<String> urls = new ArrayList<>(repositories);
@@ -73,18 +75,11 @@ public final class CheckCommand implements Callable<Integer> {
     }
 
     @Override
-    public Integer call() {
-        PrintWriter out = spec.commandLine().getOut();
+    public Integer call() throws IOException {
         try (MavenResolver resolver = new MavenResolver(resolverConfig())) {
             CheckResult result = new UpgradeChecker(resolver)
                     .check(project, dependency.groupId(), dependency.artifactId(), toVersion);
-            out.println("Checking " + result.from() + " -> " + result.to().version() + " for " + result.project());
-            for (Finding f : result.findings()) {
-                out.println((f.isBreak() ? "BREAK  " : "WARN   ") + f.sentence()
-                        + (f.consequence() == null ? "" : " -> " + f.consequence()));
-            }
-            out.println(result.breaks().size() + " breaks, " + result.warnings().size() + " warnings");
-            out.flush();
+            ReportOutput.write(spec, output, format, noColor, result);
             return result.hasBreaks() ? ExitCodes.BREAKS_FOUND : ExitCodes.SAFE;
         }
     }

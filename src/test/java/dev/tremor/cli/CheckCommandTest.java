@@ -66,7 +66,10 @@ class CheckCommandTest {
         CliRunner result = check("--dependency", "org.target:target", "--to", "2.0");
 
         assertThat(result.exitCode()).isEqualTo(ExitCodes.BREAKS_FOUND);
-        assertThat(result.out()).contains("Main.java:5 calls Api.gone(), which was removed");
+        assertThat(result.out())
+                .contains("src/main/java/app/Main.java:5")
+                .contains("calls Api.gone(), which was removed")
+                .contains("❌ 1 break, 0 warnings across 1 file");
     }
 
     @Test
@@ -74,7 +77,18 @@ class CheckCommandTest {
         CliRunner result = check("--dependency", "org.target:target", "--to", "1.1");
 
         assertThat(result.exitCode()).isEqualTo(ExitCodes.SAFE);
-        assertThat(result.out()).contains("0 breaks");
+        assertThat(result.out()).contains("✅ Safe: nothing you use changed.");
+    }
+
+    @Test
+    void writesReportToAFile() throws Exception {
+        Path report = temp.resolve("out/report.txt");
+
+        CliRunner result = check("--dependency", "org.target:target", "--to", "2.0", "--output", report.toString());
+
+        assertThat(result.exitCode()).isEqualTo(ExitCodes.BREAKS_FOUND);
+        assertThat(Files.readString(report)).contains("calls Api.gone()");
+        assertThat(result.err()).contains("report written to");
     }
 
     @Test

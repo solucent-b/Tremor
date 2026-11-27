@@ -1,12 +1,9 @@
 package dev.tremor.cli;
 
-import dev.tremor.project.DeclaredDependency;
-import dev.tremor.project.Gav;
-import dev.tremor.project.ProjectModel;
-import dev.tremor.resolve.DependencyTree;
-import dev.tremor.resolve.DependencyTreeResolver;
+import dev.tremor.analysis.CheckResult;
+import dev.tremor.analysis.Finding;
+import dev.tremor.analysis.UpgradeChecker;
 import dev.tremor.resolve.MavenResolver;
-import dev.tremor.resolve.ProjectLoader;
 import dev.tremor.resolve.ResolverConfig;
 import java.io.PrintWriter;
 import java.nio.file.Path;
@@ -79,26 +76,16 @@ public final class CheckCommand implements Callable<Integer> {
     public Integer call() {
         PrintWriter out = spec.commandLine().getOut();
         try (MavenResolver resolver = new MavenResolver(resolverConfig())) {
-            ProjectModel model = new ProjectLoader(resolver).load(project);
-            model.warnings().forEach(w -> spec.commandLine().getErr().println("tremor: warning: " + w));
-            DependencyTree tree = new DependencyTreeResolver(resolver).resolve(model);
-
-            boolean direct = model.findDependency(dependency.groupId(), dependency.artifactId()).isPresent();
-            String current = tree.selected(dependency.groupId(), dependency.artifactId())
-                    .map(Gav::version)
-                    .or(() -> model.findDependency(dependency.groupId(), dependency.artifactId())
-                            .map(DeclaredDependency::version))
-                    .orElse(null);
-
-            out.println("project:    " + model.gav() + " (" + model.pomFile() + ")");
-            out.println("dependency: " + dependency + (direct ? "" : " (not a direct dependency)"));
-            out.println("current:    " + (current == null ? "not in the dependency tree" : current));
-            out.println("to:         " + toVersion);
-            out.println("tree:       " + tree.selected().size() + " artifacts");
-            out.println("format:     " + format.name().toLowerCase());
-            out.println("output:     " + (output == null ? "(terminal)" : output));
+            CheckResult result = new UpgradeChecker(resolver)
+                    .check(project, dependency.groupId(), dependency.artifactId(), toVersion);
+            out.println("Checking " + result.from() + " -> " + result.to().version() + " for " + result.project());
+            for (Finding f : result.findings()) {
+                out.println((f.isBreak() ? "BREAK  " : "WARN   ") + f.sentence()
+                        + (f.consequence() == null ? "" : " -> " + f.consequence()));
+            }
+            out.println(result.breaks().size() + " breaks, " + result.warnings().size() + " warnings");
             out.flush();
-            return ExitCodes.SAFE;
+            return result.hasBreaks() ? ExitCodes.BREAKS_FOUND : ExitCodes.SAFE;
         }
     }
 }

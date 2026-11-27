@@ -1,0 +1,2 @@
+# stop() is new and abstract; name() is a default method and is fine.
+break ABSTRACT_METHOD_ADDED project | MetricsPlugin.java:3 implements Plugin, which now requires Plugin.stop() to be implemented

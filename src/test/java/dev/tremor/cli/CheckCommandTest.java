@@ -136,6 +136,46 @@ class CheckCommandTest {
     }
 
     @Test
+    void gradleProjectsAreChecked() throws Exception {
+        Path gradle = Files.createDirectories(temp.resolve("gradle-app"));
+        Files.writeString(gradle.resolve("build.gradle"), """
+                plugins { id 'java' }
+                dependencies { implementation 'org.target:target:1.0' }
+                """);
+        Path classes = project.resolve("target/classes");
+        Path gradleClasses = gradle.resolve("build/classes/java/main");
+        try (var files = Files.walk(classes)) {
+            for (Path f : files.filter(Files::isRegularFile).toList()) {
+                Path to = gradleClasses.resolve(classes.relativize(f).toString());
+                Files.createDirectories(to.getParent());
+                Files.copy(f, to);
+            }
+        }
+        List<String> args = new ArrayList<>(List.of("check", "--project", gradle.toString(),
+                "--dependency", "org.target:target", "--to", "2.0"));
+        args.addAll(fixture.offlineArgs());
+
+        CliRunner result = CliRunner.run(args.toArray(String[]::new));
+
+        assertThat(result.exitCode()).isEqualTo(ExitCodes.BREAKS_FOUND);
+        assertThat(result.out()).contains("calls Api.gone(), which was removed");
+    }
+
+    @Test
+    void uncompiledGradleProjectAsksToRunGradle() throws Exception {
+        Path gradle = Files.createDirectories(temp.resolve("gradle-empty"));
+        Files.writeString(gradle.resolve("build.gradle.kts"), "dependencies { implementation(\"org.target:target:1.0\") }");
+        List<String> args = new ArrayList<>(List.of("check", "--project", gradle.toString(),
+                "--dependency", "org.target:target", "--to", "2.0"));
+        args.addAll(fixture.offlineArgs());
+
+        CliRunner result = CliRunner.run(args.toArray(String[]::new));
+
+        assertThat(result.exitCode()).isEqualTo(ExitCodes.TOOL_ERROR);
+        assertThat(result.err()).contains("./gradlew classes");
+    }
+
+    @Test
     void dependencyNotInTreeIsToolError() {
         CliRunner result = check("--dependency", "org.example:nowhere", "--to", "1.0");
 

@@ -33,7 +33,7 @@ public final class UpgradeChecker {
     private final Function<Path, List<Path>> classesLocator;
 
     public UpgradeChecker(MavenResolver resolver) {
-        this(resolver, AnalysisCache.in(resolver.config().cacheDir()), ProjectClasses::maven);
+        this(resolver, AnalysisCache.in(resolver.config().cacheDir()), ProjectClasses::forProject);
     }
 
     public UpgradeChecker(MavenResolver resolver, AnalysisCache cache, Function<Path, List<Path>> classesLocator) {

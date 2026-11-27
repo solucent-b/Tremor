@@ -2,6 +2,7 @@ package dev.tremor.resolve;
 
 import dev.tremor.project.DeclaredDependency;
 import dev.tremor.project.Gav;
+import dev.tremor.project.GradleBuildReader;
 import dev.tremor.project.PomReader;
 import dev.tremor.project.ProjectModel;
 import java.nio.file.Path;
@@ -21,8 +22,14 @@ public final class ProjectLoader {
         this.resolver = resolver;
     }
 
+    /** Reads {@code pom.xml}, or a Gradle build when there is no POM. */
     public ProjectModel load(Path projectDir) {
-        return expandBoms(new PomReader(resolver::resolvePom).read(projectDir));
+        boolean maven = !java.nio.file.Files.isDirectory(projectDir)
+                || java.nio.file.Files.isRegularFile(projectDir.resolve("pom.xml"))
+                || !GradleBuildReader.isGradleProject(projectDir);
+        ProjectModel raw = maven ? new PomReader(resolver::resolvePom).read(projectDir)
+                : new GradleBuildReader().read(projectDir);
+        return expandBoms(raw);
     }
 
     /** Fills in versions that come from imported BOMs (Maven) or platforms (Gradle). */

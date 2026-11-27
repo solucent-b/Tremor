@@ -1,0 +1,1 @@
+# v2 removes a method the app never calls and adds a new one: nothing to report.

@@ -1,0 +1,2 @@
+# Cache.getIfPresent(Object) is removed in v2; get(Object) stays.
+break REMOVED_METHOD project | UserService.java:9 calls Cache.getIfPresent(Object), which was removed

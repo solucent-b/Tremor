@@ -1,0 +1,2 @@
+# Still links at runtime, but the code no longer compiles without a try/catch.
+warning NEW_CHECKED_EXCEPTION project | Templates.java:5 calls Loader.load(String), which now throws IOException

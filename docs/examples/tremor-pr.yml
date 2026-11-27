@@ -1,0 +1,21 @@
+# Copy to .github/workflows/tremor.yml in your project.
+name: Tremor
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write   # to post the Tremor comment (also works for Dependabot PRs)
+
+jobs:
+  tremor:
+    # Only for dependency bots; remove this line to check every PR whose title names an upgrade.
+    if: github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: solucent-b/Tremor@v0.1.0
+        with:
+          fail-on-breaks: 'true'

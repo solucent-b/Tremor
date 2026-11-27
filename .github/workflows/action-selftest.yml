@@ -1,0 +1,30 @@
+name: Action self-test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the Tremor action on the demo app
+        id: tremor
+        uses: ./
+        with:
+          project: examples/demo-app
+          dependency: com.google.guava:guava
+          to: 33.0.0-jre
+          fail-on-breaks: 'false'
+          comment: 'false'
+
+      - name: The demo app must break
+        run: |
+          echo "verdict=${{ steps.tremor.outputs.verdict }} breaks=${{ steps.tremor.outputs.breaks }}"
+          test "${{ steps.tremor.outputs.verdict }}" = "breaks"
+          test "${{ steps.tremor.outputs.breaks }}" -ge 4

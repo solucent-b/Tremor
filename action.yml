@@ -1,0 +1,87 @@
+name: Tremor upgrade check
+description: Feel the shake before you upgrade. Checks what a dependency upgrade breaks and comments on the pull request.
+author: solucent-b
+branding:
+  icon: activity
+  color: orange
+
+inputs:
+  project:
+    description: Project directory, relative to the repository root. Defaults to the directory Dependabot names, or '.'.
+    default: '.'
+  dependency:
+    description: groupId:artifactId to check. Leave empty to read it from the Dependabot/Renovate pull request title.
+    default: ''
+  to:
+    description: Version to upgrade to. Leave empty to read it from the pull request title.
+    default: ''
+  build-command:
+    description: Command that compiles the project (main and test classes). Default - Maven or Gradle, detected.
+    default: ''
+  fail-on-breaks:
+    description: Fail the job when Tremor finds breaks.
+    default: 'true'
+  comment:
+    description: Post (or update) one comment on the pull request.
+    default: 'true'
+  java-version:
+    description: Java version used to build the project and run Tremor (21 or newer).
+    default: '21'
+  github-token:
+    description: Token used to comment. Needs 'pull-requests write' permission.
+    default: ${{ github.token }}
+
+outputs:
+  verdict:
+    description: safe, warnings, breaks, skipped or error.
+    value: ${{ steps.check.outputs.verdict }}
+  breaks:
+    description: Number of breaks found.
+    value: ${{ steps.check.outputs.breaks }}
+  dependency:
+    description: The dependency that was checked.
+    value: ${{ steps.check.outputs.dependency }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Build Tremor
+      shell: bash
+      run: mvn -B -q -f "$GITHUB_ACTION_PATH/pom.xml" -DskipTests package
+
+    - name: Check the upgrade
+      id: check
+      shell: bash
+      env:
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_DEPENDENCY: ${{ inputs.dependency }}
+        INPUT_TO: ${{ inputs.to }}
+        INPUT_BUILD_COMMAND: ${{ inputs.build-command }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        REPOSITORY: ${{ github.repository }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: bash "$GITHUB_ACTION_PATH/action/run.sh"
+
+    - name: Upload the full report
+      if: always() && steps.check.outputs.verdict != 'skipped'
+      uses: actions/upload-artifact@v4
+      with:
+        name: tremor-report
+        path: ${{ runner.temp }}/tremor-report
+        if-no-files-found: ignore
+
+    - name: Fail on breaks
+      if: inputs.fail-on-breaks == 'true' && (steps.check.outputs.verdict == 'breaks' || steps.check.outputs.verdict == 'error')
+      shell: bash
+      run: |
+        echo "::error::Tremor: ${{ steps.check.outputs.verdict }} for ${{ steps.check.outputs.dependency }}. See the report artifact."
+        exit 1

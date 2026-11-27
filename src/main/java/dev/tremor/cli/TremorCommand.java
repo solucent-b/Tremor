@@ -9,7 +9,7 @@ import picocli.CommandLine.Command;
         mixinStandardHelpOptions = true,
         versionProvider = TremorVersion.class,
         description = "Feel the shake before you upgrade: find what a dependency upgrade breaks.",
-        subcommands = {CheckCommand.class, CommandLine.HelpCommand.class})
+        subcommands = {CheckCommand.class, DetectUpgradeCommand.class, CommandLine.HelpCommand.class})
 public final class TremorCommand implements Runnable {
 
     @CommandLine.Spec

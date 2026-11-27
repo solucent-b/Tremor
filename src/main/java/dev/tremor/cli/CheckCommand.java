@@ -1,7 +1,11 @@
 package dev.tremor.cli;
 
+import dev.tremor.project.DeclaredDependency;
+import dev.tremor.project.PomReader;
+import dev.tremor.project.ProjectModel;
 import java.io.PrintWriter;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -43,8 +47,20 @@ public final class CheckCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         PrintWriter out = spec.commandLine().getOut();
-        out.println("project:    " + project.toAbsolutePath().normalize());
-        out.println("dependency: " + dependency);
+        ProjectModel model = new PomReader().read(project);
+        model.warnings().forEach(w -> spec.commandLine().getErr().println("tremor: warning: " + w));
+
+        Optional<DeclaredDependency> declared =
+                model.findDependency(dependency.groupId(), dependency.artifactId());
+        String current = declared.map(DeclaredDependency::version)
+                .or(() -> model.findManaged(dependency.groupId(), dependency.artifactId())
+                        .map(DeclaredDependency::version))
+                .orElse(null);
+
+        out.println("project:    " + model.gav() + " (" + model.pomFile() + ")");
+        out.println("dependency: " + dependency
+                + (declared.isPresent() ? "" : " (not a direct dependency)"));
+        out.println("current:    " + (current == null ? "unknown" : current));
         out.println("to:         " + toVersion);
         out.println("format:     " + format.name().toLowerCase());
         out.println("output:     " + (output == null ? "(terminal)" : output));

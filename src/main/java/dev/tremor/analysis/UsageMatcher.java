@@ -126,14 +126,16 @@ public final class UsageMatcher {
     }
 
     private boolean classStillUsable(Context ctx, Usage u, String owner, String action) {
+        // For a member, say that its whole class went away; for a class usage, the class is the subject.
+        String prefix = u.kind().isMemberUsage() ? "belongs to " + Names.simple(owner) + ", which " : "";
         if (!newModel.contains(owner)) {
             ApiChange change = first(diff.forClass(owner), ChangeKind.REMOVED_CLASS);
-            breakage(ctx, u, ChangeKind.REMOVED_CLASS, action, "was removed",
+            breakage(ctx, u, ChangeKind.REMOVED_CLASS, action, prefix + "was removed",
                     "NoClassDefFoundError at runtime", change == null ? null : change.hint());
             return false;
         }
         if (!newModel.isApiClass(owner) && oldModel.isApiClass(owner)) {
-            breakage(ctx, u, ChangeKind.CLASS_LESS_VISIBLE, action, "is no longer public",
+            breakage(ctx, u, ChangeKind.CLASS_LESS_VISIBLE, action, prefix + "is no longer public",
                     "IllegalAccessError at runtime", null);
             return false;
         }

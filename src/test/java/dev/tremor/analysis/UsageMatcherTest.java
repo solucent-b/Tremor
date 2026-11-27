@@ -156,7 +156,7 @@ class UsageMatcherTest {
                 "package app; class App { void a() { lib.Lib.m(); } }");
 
         assertThat(f).isNotEmpty().allSatisfy(b -> assertThat(b.isBreak()).isTrue());
-        assertThat(f.get(0).reason()).isEqualTo("is no longer public");
+        assertThat(f.get(0).reason()).isEqualTo("belongs to Lib, which is no longer public");
     }
 
     @Test

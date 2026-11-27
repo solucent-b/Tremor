@@ -1,16 +1,22 @@
 package dev.tremor.cli;
 
 import dev.tremor.project.DeclaredDependency;
-import dev.tremor.project.PomReader;
+import dev.tremor.project.Gav;
 import dev.tremor.project.ProjectModel;
+import dev.tremor.resolve.DependencyTree;
+import dev.tremor.resolve.DependencyTreeResolver;
+import dev.tremor.resolve.MavenResolver;
+import dev.tremor.resolve.ProjectLoader;
+import dev.tremor.resolve.ResolverConfig;
 import java.io.PrintWriter;
 import java.nio.file.Path;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
-import picocli.CommandLine.Model.CommandSpec;
 
 /** {@code tremor check}: analyse one dependency upgrade against a project. */
 @Command(
@@ -44,27 +50,55 @@ public final class CheckCommand implements Callable<Integer> {
             description = "Write the report to this file instead of the terminal.")
     Path output;
 
+    @Option(names = "--repository", paramLabel = "URL",
+            description = "Extra Maven repository to search before Maven Central (repeatable).")
+    List<String> repositories = new ArrayList<>();
+
+    @Option(names = "--cache-dir", paramLabel = "DIR",
+            description = "Where to cache downloads (default: ~/.tremor/cache or $TREMOR_CACHE).")
+    Path cacheDir;
+
+    @Option(names = "--no-central",
+            description = "Do not use Maven Central; only the --repository URLs (e.g. a company mirror).")
+    boolean noCentral;
+
+    ResolverConfig resolverConfig() {
+        Path cache = cacheDir != null ? cacheDir : ResolverConfig.defaultCacheDir();
+        List<String> urls = new ArrayList<>(repositories);
+        if (!noCentral) {
+            urls.add(ResolverConfig.MAVEN_CENTRAL);
+        }
+        if (urls.isEmpty()) {
+            throw new picocli.CommandLine.ParameterException(spec.commandLine(),
+                    "--no-central needs at least one --repository URL");
+        }
+        return new ResolverConfig(cache, urls);
+    }
+
     @Override
     public Integer call() {
         PrintWriter out = spec.commandLine().getOut();
-        ProjectModel model = new PomReader().read(project);
-        model.warnings().forEach(w -> spec.commandLine().getErr().println("tremor: warning: " + w));
+        try (MavenResolver resolver = new MavenResolver(resolverConfig())) {
+            ProjectModel model = new ProjectLoader(resolver).load(project);
+            model.warnings().forEach(w -> spec.commandLine().getErr().println("tremor: warning: " + w));
+            DependencyTree tree = new DependencyTreeResolver(resolver).resolve(model);
 
-        Optional<DeclaredDependency> declared =
-                model.findDependency(dependency.groupId(), dependency.artifactId());
-        String current = declared.map(DeclaredDependency::version)
-                .or(() -> model.findManaged(dependency.groupId(), dependency.artifactId())
-                        .map(DeclaredDependency::version))
-                .orElse(null);
+            boolean direct = model.findDependency(dependency.groupId(), dependency.artifactId()).isPresent();
+            String current = tree.selected(dependency.groupId(), dependency.artifactId())
+                    .map(Gav::version)
+                    .or(() -> model.findDependency(dependency.groupId(), dependency.artifactId())
+                            .map(DeclaredDependency::version))
+                    .orElse(null);
 
-        out.println("project:    " + model.gav() + " (" + model.pomFile() + ")");
-        out.println("dependency: " + dependency
-                + (declared.isPresent() ? "" : " (not a direct dependency)"));
-        out.println("current:    " + (current == null ? "unknown" : current));
-        out.println("to:         " + toVersion);
-        out.println("format:     " + format.name().toLowerCase());
-        out.println("output:     " + (output == null ? "(terminal)" : output));
-        out.flush();
-        return ExitCodes.SAFE;
+            out.println("project:    " + model.gav() + " (" + model.pomFile() + ")");
+            out.println("dependency: " + dependency + (direct ? "" : " (not a direct dependency)"));
+            out.println("current:    " + (current == null ? "not in the dependency tree" : current));
+            out.println("to:         " + toVersion);
+            out.println("tree:       " + tree.selected().size() + " artifacts");
+            out.println("format:     " + format.name().toLowerCase());
+            out.println("output:     " + (output == null ? "(terminal)" : output));
+            out.flush();
+            return ExitCodes.SAFE;
+        }
     }
 }
